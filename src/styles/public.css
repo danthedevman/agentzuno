@@ -3470,10 +3470,14 @@ html:not(.app-ready)
 @media (min-width: 761px) {
   .docs-navigation {
     position: sticky;
-    top: 112px;
+    --docs-navigation-top: 24px;
+    top: var(--docs-navigation-top);
     align-self: start;
-    max-height: calc(100dvh - 136px);
+    max-height: calc(100dvh - var(--docs-navigation-top) - 24px);
     overflow-y: auto;
+  }
+  .docs-header.is-scroll-returned ~ .docs-layout .docs-navigation {
+    --docs-navigation-top: calc(var(--public-header-height, 60px) + 24px);
   }
   .docs-navigation nav {
     position: static;
