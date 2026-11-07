@@ -4,17 +4,29 @@ import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import express from 'express';
 import Redis from 'ioredis';
-import { createRateLimits } from '../src/middleware/rateLimits.js';
+import {
+  createRateLimits,
+  createRateLimiter,
+  handleRateLimitError,
+} from '../src/middleware/rateLimits.js';
 import { secureCookies } from '../src/identity/cookieSecurity.js';
 
 async function start(limits, scope = 'auth', options = {}) {
   const app = express();
-  const limiter = limits.middleware(scope, { limit: 2, ...options });
-  app.get('/login', limiter, (request, response) => response.json({ ok: true }));
-  app.get('/register', limiter, (request, response) => response.json({ ok: true }));
+  app.locals.rateLimits = limits;
+  const limiter = createRateLimiter(app, scope, { limit: 2, ...options });
+  let handled = 0;
+  const respond = (request, response) => {
+    handled++;
+    response.json({ ok: true });
+  };
+  app.get('/login', limiter, respond);
+  app.get('/register', limiter, respond);
+  app.use(handleRateLimitError);
   const server = app.listen(0, '127.0.0.1');
   await once(server, 'listening');
   return {
+    handled: () => handled,
     get: (path = '/login') => fetch(`http://127.0.0.1:${server.address().port}${path}`),
     close: async () => {
       await new Promise((resolve) => server.close(resolve));
@@ -30,6 +42,7 @@ test('local rate limits combine login and registration attempts', async () => {
     const blocked = await app.get();
     assert.equal(blocked.status, 429);
     assert.ok(blocked.headers.get('retry-after'));
+    assert.equal(app.handled(), 2);
   } finally {
     await app.close();
   }
@@ -74,6 +87,7 @@ test('configured Redis failure denies requests without revealing connection deta
   try {
     const result = await app.get();
     assert.equal(result.status, 503);
+    assert.equal(app.handled(), 0);
     assert.deepEqual(await result.json(), {
       error: 'Request protection is unavailable. Try again shortly.',
     });
@@ -98,4 +112,13 @@ test('HTTPS origin requires secure cookies even with the local default flag', ()
     if (secure === undefined) delete process.env.COOKIE_SECURE;
     else process.env.COOKIE_SECURE = secure;
   }
+});
+
+test('rate-limit error middleware leaves unrelated application errors to the next handler', () => {
+  const error = new Error('An unrelated failure');
+  let forwarded;
+  handleRateLimitError(error, {}, {}, (value) => {
+    forwarded = value;
+  });
+  assert.equal(forwarded, error);
 });

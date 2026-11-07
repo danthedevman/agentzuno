@@ -2,6 +2,20 @@ import { rateLimit } from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
 import Redis from 'ioredis';
 
+class RateLimitStorageError extends Error {}
+
+export function handleRateLimitError(error, request, response, next) {
+  let cause = error;
+  for (let depth = 0; cause && depth < 5; depth++, cause = cause.cause) {
+    if (cause instanceof RateLimitStorageError && !response.headersSent) {
+      return response.status(503).json({
+        error: 'Request protection is unavailable. Try again shortly.',
+      });
+    }
+  }
+  return next(error);
+}
+
 export function createRateLimits({
   redisUrl = process.env.REDIS_URL,
   prefix = 'agentzuno:rate:',
@@ -18,7 +32,7 @@ export function createRateLimits({
   redis?.on('error', () => {});
   return {
     middleware(scope, options = {}) {
-      const limiter = rateLimit({
+      return rateLimit({
         windowMs: 60000,
         limit: 120,
         standardHeaders: 'draft-8',
@@ -34,21 +48,13 @@ export function createRateLimits({
                   try {
                     return await redis.call(...args);
                   } catch {
-                    throw new Error('Rate-limit storage unavailable.');
+                    throw new RateLimitStorageError('Rate-limit storage unavailable.');
                   }
                 },
               }),
             }
           : {}),
       });
-      return (request, response, next) =>
-        limiter(request, response, (error) => {
-          if (error)
-            return response
-              .status(503)
-              .json({ error: 'Request protection is unavailable. Try again shortly.' });
-          next();
-        });
     },
     close: async () => redis?.disconnect(),
   };

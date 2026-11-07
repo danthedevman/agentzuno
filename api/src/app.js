@@ -4,7 +4,11 @@ import { installApiRoutes } from './routes/index.js';
 import { installChannelEventRoutes } from './routes/channels/channelEventsRoutes.js';
 
 import { createHelpdeskTeams } from './channels/helpdeskTeams.js';
-import { createRateLimits, createRateLimiter } from './middleware/rateLimits.js';
+import {
+  createRateLimits,
+  createRateLimiter,
+  handleRateLimitError,
+} from './middleware/rateLimits.js';
 
 import { installDatabaseSetupRoutes } from './routes/storage/setupRoutes.js';
 
@@ -84,6 +88,7 @@ export function createApi(options = {}) {
     customDomains,
   });
   app.use((request, response) => response.status(404).json({ error: 'API route not found.' }));
+  app.use(handleRateLimitError);
   app.use((error, request, response, next) => {
     if (response.headersSent) return next(error);
     const status = [400, 401, 403, 404, 409, 413, 421, 422, 429, 501, 502, 503].includes(
