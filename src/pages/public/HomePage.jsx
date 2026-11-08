@@ -137,7 +137,7 @@ export default function HomePage() {
           <h1
             id="app-name"
             class="marketing-hero-heading"
-            aria-label="Your help desk. From ask to done"
+            aria-label="Your help desk From ask to done"
           >
             <For each={['Your help desk', 'From ask to done']}>
               {(line, lineIndex) => (
@@ -243,9 +243,9 @@ export default function HomePage() {
       >
         <div class="marketing-copy">
           <h2 id="knowledge-feature-title">
-            Get answers.
+            Get answers
             <br />
-            Keep work moving.
+            Keep work moving
           </h2>
           <p>
             Give employees trusted answers wherever they work. Bring your organization’s knowledge
@@ -329,7 +329,7 @@ export default function HomePage() {
       >
         <div class="marketing-copy">
           <h2 id="open-source-feature-title">
-            One agent builds.
+            One agent builds
             <br />
             The other helps
           </h2>

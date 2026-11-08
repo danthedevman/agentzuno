@@ -31,7 +31,7 @@ test('prerendered marketing hydrates visible panels and starts their animations'
       page.locator('.hero-conversation-visual.is-front .hero-employee-message'),
     ).toHaveCSS('animation-name', 'chat-bubble-arrive');
     await expect(
-      page.getByRole('heading', { name: 'Your help desk. From ask to done', exact: true }),
+      page.getByRole('heading', { name: 'Your help desk From ask to done', exact: true }),
     ).toBeAttached();
     expect(
       await page.evaluate(
