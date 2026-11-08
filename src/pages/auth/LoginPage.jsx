@@ -122,7 +122,7 @@ export default function LoginPage(props) {
             </a>
           </p>
         </Show>
-        <ValidatedForm onSubmit={submit}>
+        <ValidatedForm onSubmit={submit} showRequirements={false}>
           <Show when={isRegister()}>
             <label>
               Name

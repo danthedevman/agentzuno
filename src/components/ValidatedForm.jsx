@@ -10,6 +10,7 @@ export default function ValidatedForm(props) {
     'ref',
     'validationRef',
     'validateField',
+    'showRequirements',
   ]);
   let form;
   const { notify, dismiss } = useToasts();
@@ -240,7 +241,7 @@ export default function ValidatedForm(props) {
       }}
     >
       {local.children}
-      <For each={markers()}>
+      <For each={local.showRequirements === false ? [] : markers()}>
         {(marker) => (
           <Portal mount={marker.label}>
             <span class="field-requirement" aria-hidden="true">
