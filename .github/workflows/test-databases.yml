@@ -13,7 +13,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  databases:
+    name: Database and UI tests
     # MongoDB 8 rejects Linux 6.19+; use the supported Ubuntu 22.04 runner.
     runs-on: ubuntu-22.04
     services:
@@ -58,18 +59,82 @@ jobs:
       - run: npm run build
       - run: npm run test:ui
       - run: npm --prefix api test
+
+  browser:
+    name: Application browser tests (${{ matrix.project }})
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, mobile]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+      - run: npm ci
+      - run: npm --prefix api ci
       - name: Install browser test runtime
         run: npx playwright install --with-deps chromium
-      - name: Browser regression tests
-        run: npm run test:browser
-      - name: Production marketing regression tests
-        run: npm run test:marketing
+      - run: npm run build
+      - run: npm run test:browser -- --project=${{ matrix.project }}
       - name: Upload browser failure reports
         if: ${{ failure() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: browser-test-results
+          name: browser-test-results-${{ matrix.project }}
           path: |
             playwright-report/
             test-results/
           retention-days: 7
+
+  marketing:
+    name: Marketing browser tests (${{ matrix.project }})
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [desktop, mobile]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            api/package-lock.json
+      - run: npm ci
+      - run: npm --prefix api ci
+      - name: Install browser test runtime
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:marketing -- --project=${{ matrix.project }}
+      - name: Upload browser failure reports
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: marketing-test-results-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+  test:
+    # Keep the existing required check while requiring every test job to pass.
+    needs: [databases, browser, marketing]
+    if: ${{ always() }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Require all test jobs to succeed
+        env:
+          DATABASE_RESULT: ${{ needs.databases.result }}
+          BROWSER_RESULT: ${{ needs.browser.result }}
+          MARKETING_RESULT: ${{ needs.marketing.result }}
+        run: |
+          test "$DATABASE_RESULT" = success
+          test "$BROWSER_RESULT" = success
+          test "$MARKETING_RESULT" = success

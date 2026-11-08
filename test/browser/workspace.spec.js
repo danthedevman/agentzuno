@@ -1016,7 +1016,14 @@ test('workflow and My Requests tables consolidate details into two columns', asy
       .getByRole('group', { name: 'Workflows view', exact: true })
       .getByRole('button', { name: 'Table', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
+  const requestsLoaded = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/helpdesk/requests' &&
+      response.request().method() === 'GET' &&
+      response.status() === 200,
+  );
   await page.goto('/workspace/222222222222222222222222/requests');
+  await (await requestsLoaded).finished();
   const card = page.locator('.record-card').first();
   await expect(card).toBeVisible();
   expect(
