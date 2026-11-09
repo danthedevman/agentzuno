@@ -4176,7 +4176,7 @@ html:not(.app-ready)
     transform: scale(1);
   }
 }
-@media (prefers-reduced-motion: reduce), (max-height: 600px) {
+@media (prefers-reduced-motion: reduce) {
   .request-lifecycle {
     gap: 24px;
     padding-bottom: 0;
